@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\vtb.InvoicesService.Api\vtb.InvoicesService.Api.csproj" />
+    <ProjectReference Include="..\vtb.InvoicesService.Service\vtb.InvoicesService.Service.csproj" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+</Project>
