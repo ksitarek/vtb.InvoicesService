@@ -1,9 +1,11 @@
 ﻿using System;
+using EnsureThat;
 
 namespace vtb.InvoicesService.Domain
 {
     public class InvoicePosition
     {
+        public int OrdinalNumber { get; private set; }
         public string Summary { get; private set; }
         public string Description { get; private set; }
         public string UnitOfMeasure { get; private set; }
@@ -11,8 +13,14 @@ namespace vtb.InvoicesService.Domain
         public decimal Value { get; private set; }
         public TaxInfo TaxInfo { get; private set; }
 
-        public InvoicePosition(string summary, decimal quantity, TaxInfo taxInfo, decimal value, string unitOfMeasure, string description = "")
+        public InvoicePosition(int ordinalNumber, string summary, decimal quantity, TaxInfo taxInfo, decimal value,
+            string unitOfMeasure, string description = "")
         {
+            Ensure.That(ordinalNumber, nameof(ordinalNumber)).IsGt(0);
+            Ensure.That(quantity, nameof(quantity)).IsGt(0);
+            Ensure.That(value, nameof(value)).IsGt(0);
+
+            OrdinalNumber = ordinalNumber;
             Summary = summary ?? throw new ArgumentNullException(nameof(summary));
             Description = description ?? throw new ArgumentNullException(nameof(description));
             Quantity = quantity;
@@ -38,5 +46,6 @@ namespace vtb.InvoicesService.Domain
 
         public decimal GetTotalTaxValue(CalculationDirection calculationDirection)
             => GetTotalGrossValue(calculationDirection) - GetTotalNetValue(calculationDirection);
+
     }
 }

@@ -1,14 +1,20 @@
 ﻿using System;
+using EnsureThat;
 
 namespace vtb.InvoicesService.Domain
 {
-    public class TaxInfo
+    public record TaxInfo
     {
-        public string TaxLabel { get; private set; }
-        public decimal TaxMultiplier { get; private set; }
+        public string TaxLabel { get; }
+
+        public decimal TaxMultiplier { get; }
 
         public TaxInfo(string taxLabel, decimal taxMultiplier)
         {
+            Ensure.That(taxLabel, nameof(taxLabel)).IsNotEmptyOrWhiteSpace();
+            Ensure.That(taxMultiplier, nameof(taxMultiplier)).IsGte(0);
+            Ensure.That(taxMultiplier, nameof(taxMultiplier)).IsLt(1);
+
             TaxLabel = taxLabel ?? throw new ArgumentNullException(nameof(taxLabel));
             TaxMultiplier = taxMultiplier;
         }
@@ -37,16 +43,11 @@ namespace vtb.InvoicesService.Domain
                 : value * (1 + TaxMultiplier), 2);
         }
 
-        public override bool Equals(object obj)
+        public virtual bool Equals(TaxInfo other)
         {
-            if (ReferenceEquals(null, obj)) return false;
-            if (ReferenceEquals(this, obj)) return true;
-            if (obj.GetType() != this.GetType()) return false;
-            return Equals((TaxInfo)obj);
-        }
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
 
-        protected bool Equals(TaxInfo other)
-        {
             return Equals(TaxLabel, other.TaxLabel);
         }
 

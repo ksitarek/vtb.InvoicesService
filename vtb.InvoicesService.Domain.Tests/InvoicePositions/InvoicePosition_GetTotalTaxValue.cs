@@ -10,8 +10,8 @@ namespace vtb.InvoicesService.Domain.Tests.InvoicePositions
         [TestCase(0.23, 2, 123, CalculationDirection.GrossToNet, 46)]
         public void Will_Return_TaxValue(decimal taxMultiplier, decimal quantity, decimal value, CalculationDirection direction, decimal expected)
         {
-            var taxInfo = new TaxInfo(string.Empty, taxMultiplier);
-            var position = new InvoicePosition("", quantity, taxInfo, value, string.Empty);
+            var taxInfo = new TaxInfo("test", taxMultiplier);
+            var position = new InvoicePosition(1, "", quantity, taxInfo, value, string.Empty);
             position.GetTotalTaxValue(direction).ShouldBe(expected);
         }
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace vtb.InvoicesService.Domain
 {
@@ -8,21 +9,77 @@ namespace vtb.InvoicesService.Domain
     {
         public Guid Id { get; private set; }
 
-        public DateTime DraftCreatedAtUtc { get; private set; }
-        public DateTime IssuedAtUtc { get; private set; }
-        public DateTime PaidAtUtc { get; private set; }
+        public DateTime DraftCreatedAtUtc { get; }
+        public DateTime? IssuedAtUtc { get; private set; }
+        public DateTime? PaidAtUtc { get; private set; }
 
         public InvoiceNumber InvoiceNumber { get; private set; }
 
-        public Guid BuyerId { get; private set; }
-        public Guid SellerId { get; private set; }
-        public Guid IssuerId { get; private set; }
+        public Guid BuyerId { get; }
+        public Guid SellerId { get; }
+        public Guid IssuerId { get; }
 
-        public Currency Currency { get; private set; }
+        public Currency Currency { get; }
 
-        public CalculationDirection CalculationDirection { get; private set; }
+        public CalculationDirection CalculationDirection { get; }
 
-        public virtual ICollection<InvoicePosition> InvoicePositions { get; private set; } = new List<InvoicePosition>();
+        public virtual List<InvoicePosition> InvoicePositions { get; } = new List<InvoicePosition>();
+
+        public Invoice(DateTime draftCreatedAtUtc, Guid buyerId, Guid sellerId, Guid issuerId, Currency currency, CalculationDirection calculationDirection)
+        {
+            DraftCreatedAtUtc = draftCreatedAtUtc;
+            BuyerId = buyerId;
+            SellerId = sellerId;
+            IssuerId = issuerId;
+            Currency = currency;
+            CalculationDirection = calculationDirection;
+        }
+
+        public void SetPositions(List<InvoicePosition> positions)
+        {
+            ValidateOrdinalNumbers(positions.Select(x => x.OrdinalNumber));
+
+            if (IsIssued)
+            {
+                throw new InvalidOperationException("Cannot change positions of already issued invoice.");
+            }
+
+            InvoicePositions.Clear();
+            InvoicePositions.AddRange(positions);
+        }
+        
+
+        private void ValidateOrdinalNumbers(IEnumerable<int> positions)
+        {
+            if (positions.Distinct().Count() != positions.Count())
+            {
+                throw new InvalidOperationException("At least one position has duplicated ordinal number.");
+            }
+
+            if (positions.Min() > 1)
+            {
+                throw new InvalidOperationException("Position ordinal numbers should start with 1.");
+            }
+
+            if (positions.Max() != positions.Count())
+            {
+                throw new InvalidOperationException("Position ordinal numbers are not sequential.");
+            }
+        }
+
+        public void Issue(InvoiceNumber invoiceNumber, DateTime issuedAtUtc)
+        {
+            if (IsIssued)
+            {
+                throw new InvalidOperationException("Cannot issue invoice that already has been issued.");
+            }
+
+            InvoiceNumber = invoiceNumber;
+            IssuedAtUtc = issuedAtUtc;
+        }
+
+        public bool IsIssued => IssuedAtUtc.HasValue;
+        public bool IsPaid => PaidAtUtc.HasValue;
 
         public decimal TotalNetValue => InvoicePositions
             .Select(x => x.GetTotalNetValue(CalculationDirection))
@@ -41,18 +98,5 @@ namespace vtb.InvoicesService.Domain
                 x.Select(x => x.GetTotalNetValue(CalculationDirection)).DefaultIfEmpty(0).Sum(),
                 x.Select(x => x.GetTotalGrossValue(CalculationDirection)).DefaultIfEmpty(0).Sum()
             ));
-
-        public Invoice(DateTime draftCreatedAtUtc, Guid buyerId, Guid sellerId, Guid issuerId, Currency currency, CalculationDirection calculationDirection)
-        {
-            DraftCreatedAtUtc = draftCreatedAtUtc;
-            BuyerId = buyerId;
-            SellerId = sellerId;
-            IssuerId = issuerId;
-            Currency = currency;
-            CalculationDirection = calculationDirection;
-        }
-
-        public void AddInvoicePosition(string summary, decimal quantity, TaxInfo taxInfo, decimal value, string unitOfMeasure, string description = "")
-            => InvoicePositions.Add(new InvoicePosition(summary, quantity, taxInfo, value, unitOfMeasure, description));
     }
 }

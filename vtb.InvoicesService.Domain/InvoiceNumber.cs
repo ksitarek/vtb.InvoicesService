@@ -1,18 +1,19 @@
 ﻿using System;
+using System.Security.Cryptography.Xml;
 
 namespace vtb.InvoicesService.Domain
 {
-    public class InvoiceNumber
+    public record InvoiceNumber
     {
-        public int OrderingNumber { get; private set; }
+        public int OrderingNumber { get; }
 
-        public int Year { get; private set; }
+        public int Year { get; }
 
-        public int Month { get; private set; }
+        public int Month { get; }
 
-        public int Day { get; private set; }
+        public int Day { get; }
 
-        public string FormattedNumber { get; private set; }
+        public string FormattedNumber { get; }
 
         public DateTime IssuedAt { get => new DateTime(Year, Month, Day); }
 
@@ -23,6 +24,18 @@ namespace vtb.InvoicesService.Domain
             Month = month;
             Day = day;
             FormattedNumber = formattedNumber ?? throw new ArgumentNullException(nameof(formattedNumber));
+        }
+
+        public virtual bool Equals(InvoiceNumber other)
+        {
+            if (other is null) return false;
+            if (ReferenceEquals(this, other)) return true;
+            return FormattedNumber.Equals(other.FormattedNumber);
+        }
+
+        public override int GetHashCode()
+        {
+            return FormattedNumber.GetHashCode();
         }
     }
 }

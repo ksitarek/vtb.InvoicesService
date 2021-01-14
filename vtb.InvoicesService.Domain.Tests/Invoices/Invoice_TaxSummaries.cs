@@ -18,8 +18,8 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
         {
             get
             {
-                yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new (int, decimal, decimal)[0]), new List<TaxSummary>());
-                yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, new (int, decimal, decimal)[0]), new List<TaxSummary>());
+                yield return (GenerateTestInvoice(CalculationDirection.NetToGross, Array.Empty<(int, decimal, decimal)>()), new List<TaxSummary>());
+                yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, Array.Empty<(int, decimal, decimal)>()), new List<TaxSummary>());
 
                 yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new[]
                 {
@@ -27,8 +27,8 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
                     (7, 1m, 50m),
                     (7, 1m, 50m),
                 }), new List<TaxSummary>() {
-                    new TaxSummary("23%", 100, 123),
-                    new TaxSummary("7%", 100, 107),
+                    new TaxSummary("23", 100, 123),
+                    new TaxSummary("7", 100, 107),
                 });
 
                 yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, new[]
@@ -37,21 +37,25 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
                     (7, 1m, 50m),
                     (7, 1m, 50m),
                 }), new List<TaxSummary>() {
-                    new TaxSummary("23%", 100.81m, 124),
-                    new TaxSummary("7%", 93.46m, 100),
+                    new TaxSummary("23", 100.81m, 124),
+                    new TaxSummary("7", 93.46m, 100),
                 });
             }
         }
 
-        private static Invoice GenerateTestInvoice(CalculationDirection direction, (int TaxMultiplier, decimal Quantity, decimal Value)[] positionsSpec)
+
+        private static Invoice GenerateTestInvoice(CalculationDirection direction, (int, decimal, decimal)[] positionsSpec)
         {
             var invoice = new Invoice(DateTime.Today, Guid.Empty, Guid.Empty, Guid.Empty, Currency.EUR, direction);
+            var invoicePositions = new List<InvoicePosition>();
             for (var i = 0; i < positionsSpec.Length; i++)
             {
-                var posSpec = positionsSpec[i];
-                var taxInfo = new TaxInfo($"{posSpec.TaxMultiplier}%", posSpec.TaxMultiplier / 100m);
-                invoice.AddInvoicePosition("", posSpec.Quantity, taxInfo, posSpec.Value, "", "");
+                var (taxMultiplier, quantity, value) = positionsSpec[i];
+                var taxInfo = new TaxInfo(taxMultiplier.ToString(), taxMultiplier / 100m);
+                invoicePositions.Add(new InvoicePosition(1, "", quantity, taxInfo, value, "", ""));
             }
+
+            invoice.SetPositions(invoicePositions);
 
             return invoice;
         }

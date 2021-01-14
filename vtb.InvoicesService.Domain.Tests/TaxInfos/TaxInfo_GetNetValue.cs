@@ -14,8 +14,16 @@ namespace vtb.InvoicesService.Domain.Tests.TaxInfos
         [TestCase(123, 0.23, CalculationDirection.GrossToNet, 100)]
         public void Will_Return_Net_Value(decimal value, decimal multiplier, CalculationDirection direction, decimal expected)
         {
-            var taxInfo = new TaxInfo(string.Empty, multiplier);
+            var taxInfo = new TaxInfo("test", multiplier);
             taxInfo.GetNetValue(direction, value).ShouldBe(expected);
+        }
+
+        [Test]
+        public void Will_Throw_When_CalculationDirection_Unknown()
+        {
+            var taxInfo = new TaxInfo("23%", 0.23m);
+            Should.Throw<InvalidOperationException>(
+                () => taxInfo.GetNetValue(CalculationDirection.Unknown, 123));
         }
     }
 }

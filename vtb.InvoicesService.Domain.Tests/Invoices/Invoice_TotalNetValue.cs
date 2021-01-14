@@ -17,8 +17,8 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
         {
             get
             {
-                yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new (int, decimal, decimal)[0]), 0m);
-                yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, new (int, decimal, decimal)[0]), 0m);
+                yield return (GenerateTestInvoice(CalculationDirection.NetToGross, Array.Empty<(int, decimal, decimal)>()), 0m);
+                yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, Array.Empty<(int, decimal, decimal)>()), 0m);
 
                 yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new[] { (23, 0.5m, 1m) }), 0.5m);
                 yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new[] { (23, 1m, 0.5m) }), 0.5m);
@@ -37,12 +37,15 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
         private static Invoice GenerateTestInvoice(CalculationDirection direction, (int, decimal, decimal)[] positionsSpec)
         {
             var invoice = new Invoice(DateTime.Today, Guid.Empty, Guid.Empty, Guid.Empty, Currency.EUR, direction);
+            var invoicePositions = new List<InvoicePosition>();
             for (var i = 0; i < positionsSpec.Length; i++)
             {
-                var posSpec = positionsSpec[i];
-                var taxInfo = new TaxInfo(posSpec.Item1.ToString(), posSpec.Item1 / 100m);
-                invoice.AddInvoicePosition("", posSpec.Item2, taxInfo, posSpec.Item3, "", "");
+                var (taxMultiplier, quantity, value) = positionsSpec[i];
+                var taxInfo = new TaxInfo(taxMultiplier.ToString(), taxMultiplier / 100m);
+                invoicePositions.Add(new InvoicePosition(1, "", quantity, taxInfo, value, "", ""));
             }
+
+            invoice.SetPositions(invoicePositions);
 
             return invoice;
         }
