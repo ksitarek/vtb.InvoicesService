@@ -1,4 +1,5 @@
-﻿using System;
+﻿using EnsureThat;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -22,10 +23,25 @@ namespace vtb.InvoicesService.Domain
 
         public CalculationDirection CalculationDirection { get; }
 
-        public virtual List<InvoicePosition> InvoicePositions { get; } = new List<InvoicePosition>();
+        public virtual List<InvoicePosition> InvoicePositions { get; } = new();
 
         public Invoice(DateTime draftCreatedAtUtc, Guid buyerId, Guid sellerId, Guid issuerId, Currency currency, CalculationDirection calculationDirection)
         {
+            Ensure.That(draftCreatedAtUtc, nameof(draftCreatedAtUtc)).IsLte(DateTime.UtcNow);
+            Ensure.That(buyerId, nameof(buyerId)).IsNotEmpty();
+            Ensure.That(sellerId, nameof(sellerId)).IsNotEmpty();
+            Ensure.That(issuerId, nameof(issuerId)).IsNotEmpty();
+
+            if (currency == Currency.Unknown)
+            {
+                throw new ArgumentException(nameof(currency));
+            }
+
+            if (calculationDirection == CalculationDirection.Unknown)
+            {
+                throw new ArgumentException(nameof(calculationDirection));
+            }
+
             DraftCreatedAtUtc = draftCreatedAtUtc;
             BuyerId = buyerId;
             SellerId = sellerId;
@@ -36,11 +52,14 @@ namespace vtb.InvoicesService.Domain
 
         public void SetPositions(List<InvoicePosition> positions)
         {
-            ValidateOrdinalNumbers(positions.Select(x => x.OrdinalNumber));
-
             if (IsIssued)
             {
                 throw new InvalidOperationException("Cannot change positions of already issued invoice.");
+            }
+
+            if (positions.Any())
+            {
+                ValidateOrdinalNumbers(positions.Select(x => x.OrdinalNumber));
             }
 
             InvoicePositions.Clear();
@@ -70,6 +89,11 @@ namespace vtb.InvoicesService.Domain
             if (IsIssued)
             {
                 throw new InvalidOperationException("Cannot issue invoice that already has been issued.");
+            }
+
+            if (InvoicePositions.Count == 0)
+            {
+                throw new InvalidOperationException("Cannot issue invoice that has no positions.");
             }
 
             InvoiceNumber = invoiceNumber;

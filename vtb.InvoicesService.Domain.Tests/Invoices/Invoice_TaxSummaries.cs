@@ -1,12 +1,11 @@
 ﻿using NUnit.Framework;
 using Shouldly;
-using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace vtb.InvoicesService.Domain.Tests.Invoices
 {
-    public class Invoice_TaxSummaries
+    public class Invoice_TaxSummaries : InvoiceTests
     {
         [TestCaseSource(nameof(InvoiceTestCases))]
         public void Will_Calculate_Tax_Summaries((Invoice, IEnumerable<TaxSummary>) input)
@@ -18,8 +17,8 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
         {
             get
             {
-                yield return (GenerateTestInvoice(CalculationDirection.NetToGross, Array.Empty<(int, decimal, decimal)>()), new List<TaxSummary>());
-                yield return (GenerateTestInvoice(CalculationDirection.GrossToNet, Array.Empty<(int, decimal, decimal)>()), new List<TaxSummary>());
+                yield return (GenerateEmptyTestInvoice(CalculationDirection.NetToGross), new List<TaxSummary>());
+                yield return (GenerateEmptyTestInvoice(CalculationDirection.GrossToNet), new List<TaxSummary>());
 
                 yield return (GenerateTestInvoice(CalculationDirection.NetToGross, new[]
                 {
@@ -41,22 +40,6 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
                     new TaxSummary("7", 93.46m, 100),
                 });
             }
-        }
-
-        private static Invoice GenerateTestInvoice(CalculationDirection direction, (int, decimal, decimal)[] positionsSpec)
-        {
-            var invoice = new Invoice(DateTime.Today, Guid.Empty, Guid.Empty, Guid.Empty, Currency.EUR, direction);
-            var invoicePositions = new List<InvoicePosition>();
-            for (var i = 0; i < positionsSpec.Length; i++)
-            {
-                var (taxMultiplier, quantity, value) = positionsSpec[i];
-                var taxInfo = new TaxInfo(taxMultiplier.ToString(), taxMultiplier / 100m);
-                invoicePositions.Add(new InvoicePosition(1, "", quantity, taxInfo, value, "", ""));
-            }
-
-            invoice.SetPositions(invoicePositions);
-
-            return invoice;
         }
     }
 }
