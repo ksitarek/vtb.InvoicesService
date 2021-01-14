@@ -4,14 +4,7 @@
     <PackageReference Include="Ensure.That" Version="9.2.0" />
   </ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\vtb.InvoicesService.Api\vtb.InvoicesService.Api.csproj" />
-    <ProjectReference Include="..\vtb.InvoicesService.Service\vtb.InvoicesService.Service.csproj" />
-    <ProjectReference Include="..\vtb.InvoicesService.DataAccess\vtb.InvoicesService.DataAccess.csproj" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>
-
 </Project>
