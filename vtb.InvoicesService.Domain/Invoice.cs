@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 
 namespace vtb.InvoicesService.Domain
 {
@@ -47,7 +46,6 @@ namespace vtb.InvoicesService.Domain
             InvoicePositions.Clear();
             InvoicePositions.AddRange(positions);
         }
-        
 
         private void ValidateOrdinalNumbers(IEnumerable<int> positions)
         {

@@ -43,7 +43,6 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
             }
         }
 
-
         private static Invoice GenerateTestInvoice(CalculationDirection direction, (int, decimal, decimal)[] positionsSpec)
         {
             var invoice = new Invoice(DateTime.Today, Guid.Empty, Guid.Empty, Guid.Empty, Currency.EUR, direction);

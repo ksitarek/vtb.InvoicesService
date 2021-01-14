@@ -371,6 +371,4 @@ namespace vtb.InvoicesService.Domain
 
         [Display(Name = "Zimbabwean Dollar")] ZWL = 170
     }
-
-
 }

@@ -1,5 +1,5 @@
-﻿using System;
-using EnsureThat;
+﻿using EnsureThat;
+using System;
 
 namespace vtb.InvoicesService.Domain
 {
@@ -46,6 +46,5 @@ namespace vtb.InvoicesService.Domain
 
         public decimal GetTotalTaxValue(CalculationDirection calculationDirection)
             => GetTotalGrossValue(calculationDirection) - GetTotalNetValue(calculationDirection);
-
     }
 }

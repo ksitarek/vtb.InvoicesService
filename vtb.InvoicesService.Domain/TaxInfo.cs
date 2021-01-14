@@ -1,5 +1,5 @@
-﻿using System;
-using EnsureThat;
+﻿using EnsureThat;
+using System;
 
 namespace vtb.InvoicesService.Domain
 {
