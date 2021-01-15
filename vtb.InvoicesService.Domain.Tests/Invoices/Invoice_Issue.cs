@@ -7,7 +7,7 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
     public class Invoice_Issue : InvoiceTests
     {
         [Test]
-        public void Will_Set_Invoice_State_When_Issued()
+        public void Will_Issue_Unpaid_Invoice()
         {
             var invoice = GenerateTestInvoice(CalculationDirection.NetToGross, new (int, decimal, decimal)[] { (23, 1, 100) });
 
@@ -15,8 +15,23 @@ namespace vtb.InvoicesService.Domain.Tests.Invoices
             var invoiceNumber = new InvoiceNumber(1, issuedAt.Year, issuedAt.Month, issuedAt.Day, $"1/{issuedAt.Month}/{issuedAt.Year}");
             invoice.Issue(invoiceNumber, issuedAt);
 
-            invoice.IssuedAtUtc.ShouldBe(issuedAt);
+            invoice.IssueDate.ShouldBe(issuedAt.Date);
             invoice.InvoiceNumber.ShouldBe(invoiceNumber);
+            invoice.PaymentDate.ShouldBeNull();
+        }
+
+        [Test]
+        public void Will_Issue_Paid_Invoice()
+        {
+            var invoice = GenerateTestInvoice(CalculationDirection.NetToGross, new (int, decimal, decimal)[] { (23, 1, 100) });
+
+            var issuedAt = DateTime.UtcNow;
+            var invoiceNumber = new InvoiceNumber(1, issuedAt.Year, issuedAt.Month, issuedAt.Day, $"1/{issuedAt.Month}/{issuedAt.Year}");
+            invoice.Issue(invoiceNumber, issuedAt, true);
+
+            invoice.IssueDate.ShouldBe(issuedAt.Date);
+            invoice.InvoiceNumber.ShouldBe(invoiceNumber);
+            invoice.PaymentDate.ShouldBe(issuedAt.Date);
         }
 
         [Test]
