@@ -1,34 +1,43 @@
-﻿using EnsureThat;
+﻿using Automatonymous;
+using EnsureThat;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 
 namespace vtb.InvoicesService.Domain
 {
-    public class Invoice
+    public class Invoice : SagaStateMachineInstance
     {
-        public Guid Id { get; private set; }
-        public Guid TemplateVersionId { get; private set; }
-        public DateTime DraftCreatedAtUtc { get; }
-        public DateTime? IssueDate { get; private set; }
-        public DateTime? PaymentDate { get; private set; }
-        public DateTime? PrintoutDate { get; private set; }
-        public InvoiceNumber InvoiceNumber { get; private set; }
-        public Guid BuyerId { get; }
-        public Guid SellerId { get; }
-        public Guid IssuerId { get; }
-        public Currency Currency { get; }
-        public CalculationDirection CalculationDirection { get; }
-        public virtual List<InvoicePosition> InvoicePositions { get; } = new();
+        public Guid InvoiceId { get; set; }
 
-        public Invoice(DateTime draftCreatedAtUtc, Guid templateVersionId, Guid buyerId, Guid sellerId, Guid issuerId,
+        public string State { get; set; }
+
+        public Guid CorrelationId
+        {
+            get => InvoiceId;
+            set => InvoiceId = value;
+        }
+
+        public Guid TemplateVersionId { get; set; }
+        public DateTime DraftCreatedAtUtc { get; set; }
+        public DateTime? IssueDate { get; set; }
+        public DateTime? PaymentDate { get; set; }
+        public DateTime? PrintoutDate { get; set; }
+        public InvoiceNumber InvoiceNumber { get; set; }
+        public Guid BuyerId { get; set; }
+        public Guid SellerId { get; set; }
+        public Guid IssuerId { get; set; }
+        public Currency Currency { get; set; }
+        public CalculationDirection CalculationDirection { get; set; }
+        public virtual List<InvoicePosition> InvoicePositions { get; set; } = new();
+
+        public Invoice(DateTime draftCreatedAtUtc, Guid templateVersionId, Guid buyerId, Guid sellerId,
             Currency currency, CalculationDirection calculationDirection)
         {
             Ensure.That(draftCreatedAtUtc, nameof(draftCreatedAtUtc)).IsLte(DateTime.UtcNow);
             Ensure.That(templateVersionId, nameof(templateVersionId)).IsNotEmpty();
             Ensure.That(buyerId, nameof(buyerId)).IsNotEmpty();
             Ensure.That(sellerId, nameof(sellerId)).IsNotEmpty();
-            Ensure.That(issuerId, nameof(issuerId)).IsNotEmpty();
 
             if (currency == Currency.Unknown)
             {
@@ -44,40 +53,32 @@ namespace vtb.InvoicesService.Domain
             TemplateVersionId = templateVersionId;
             BuyerId = buyerId;
             SellerId = sellerId;
-            IssuerId = issuerId;
             Currency = currency;
             CalculationDirection = calculationDirection;
         }
 
-        public void Issue(InvoiceNumber invoiceNumber, DateTime issuedAtUtc, bool isPaid = false)
+        public void Issue(InvoiceNumber invoiceNumber, DateTime issuedAtUtc, Guid issuerId)
         {
-            if (IsIssued)
+            Ensure.That(issuerId, nameof(issuerId)).IsNotEmpty();
+
+            if (IssueDate != null)
             {
                 throw new InvalidOperationException("Cannot issue invoice that already has been issued.");
             }
 
-            if (InvoicePositions.Count == 0)
+            if (!InvoicePositions.Any())
             {
-                throw new InvalidOperationException("Cannot issue invoice that has no positions.");
+                throw new InvalidOperationException("Unable to issue invoice without any positions");
             }
 
             InvoiceNumber = invoiceNumber;
             IssueDate = issuedAtUtc.Date;
-
-            if (isPaid)
-            {
-                SetPaymentDate(issuedAtUtc);
-            }
+            IssuerId = issuerId;
         }
 
         public void SetPaymentDate(DateTime paymentDate)
         {
-            if (!IsIssued)
-            {
-                throw new InvalidOperationException("Unable to pay invoice that is not issued.");
-            }
-
-            if (paymentDate.Date < IssueDate.Value)
+            if (IssueDate == null || paymentDate.Date < IssueDate.Value)
             {
                 throw new InvalidOperationException("Payment date of an invoice cannot be before it was issued.");
             }
@@ -87,11 +88,6 @@ namespace vtb.InvoicesService.Domain
 
         public void SetPositions(List<InvoicePosition> positions)
         {
-            if (IsIssued)
-            {
-                throw new InvalidOperationException("Cannot change positions of already issued invoice.");
-            }
-
             if (positions.Any())
             {
                 ValidateOrdinalNumbers(positions.Select(x => x.OrdinalNumber));
@@ -103,12 +99,7 @@ namespace vtb.InvoicesService.Domain
 
         public void SetPrintoutDate(DateTime printoutDate)
         {
-            if (!IsIssued)
-            {
-                throw new InvalidOperationException("Unable to print invoice that is not issued.");
-            }
-
-            if (printoutDate.Date < IssueDate.Value)
+            if (IssueDate == null || printoutDate.Date < IssueDate.Value)
             {
                 throw new InvalidOperationException("Printout date of an invoice cannot be before it was issued.");
             }
@@ -121,10 +112,6 @@ namespace vtb.InvoicesService.Domain
             Ensure.That(templateVersionId, nameof(templateVersionId)).IsNotEmpty();
             TemplateVersionId = templateVersionId;
         }
-
-        public bool IsIssued => IssueDate.HasValue;
-        public bool IsPrinted => PrintoutDate.HasValue;
-        public bool IsPaid => PaymentDate.HasValue;
 
         public decimal TotalNetValue => InvoicePositions
             .Select(x => x.GetTotalNetValue(CalculationDirection))

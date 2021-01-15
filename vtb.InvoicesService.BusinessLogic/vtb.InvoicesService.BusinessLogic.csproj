@@ -1,6 +1,10 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <ItemGroup>
+    <PackageReference Include="MassTransit" Version="7.1.2" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\vtb.InvoicesService.DataAccess\vtb.InvoicesService.DataAccess.csproj" />
     <ProjectReference Include="..\vtb.InvoicesService.Domain\vtb.InvoicesService.Domain.csproj" />
   </ItemGroup>
