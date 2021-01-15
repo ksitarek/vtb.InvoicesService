@@ -9,18 +9,12 @@ namespace vtb.InvoicesService.Domain
     public class Invoice : SagaStateMachineInstance
     {
         public Guid InvoiceId { get; set; }
-
         public string State { get; set; }
-
-        public Guid CorrelationId
-        {
-            get => InvoiceId;
-            set => InvoiceId = value;
-        }
-
+        public Guid? InvoicePaymentDeadlineToken { get; set; }
         public Guid TemplateVersionId { get; set; }
         public DateTime DraftCreatedAtUtc { get; set; }
         public DateTime? IssueDate { get; set; }
+        public DateTime? PaymentDeadline { get; set; }
         public DateTime? PaymentDate { get; set; }
         public DateTime? PrintoutDate { get; set; }
         public InvoiceNumber InvoiceNumber { get; set; }
@@ -57,7 +51,7 @@ namespace vtb.InvoicesService.Domain
             CalculationDirection = calculationDirection;
         }
 
-        public void Issue(InvoiceNumber invoiceNumber, DateTime issuedAtUtc, Guid issuerId)
+        public void Issue(InvoiceNumber invoiceNumber, DateTime issueDate, Guid issuerId, DateTime paymentDeadline)
         {
             Ensure.That(issuerId, nameof(issuerId)).IsNotEmpty();
 
@@ -68,11 +62,17 @@ namespace vtb.InvoicesService.Domain
 
             if (!InvoicePositions.Any())
             {
-                throw new InvalidOperationException("Unable to issue invoice without any positions");
+                throw new InvalidOperationException("Unable to issue invoice without any positions.");
+            }
+
+            if (paymentDeadline < issueDate)
+            {
+                throw new InvalidOperationException("Payment deadline cannot be before issue date.");
             }
 
             InvoiceNumber = invoiceNumber;
-            IssueDate = issuedAtUtc.Date;
+            IssueDate = issueDate.Date;
+            PaymentDeadline = paymentDeadline.Date;
             IssuerId = issuerId;
         }
 
@@ -111,6 +111,12 @@ namespace vtb.InvoicesService.Domain
         {
             Ensure.That(templateVersionId, nameof(templateVersionId)).IsNotEmpty();
             TemplateVersionId = templateVersionId;
+        }
+
+        public Guid CorrelationId
+        {
+            get => InvoiceId;
+            set => InvoiceId = value;
         }
 
         public decimal TotalNetValue => InvoicePositions

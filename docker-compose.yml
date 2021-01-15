@@ -1,0 +1,13 @@
+version: "3.6"
+
+networks:
+  twitch:
+
+services:
+  rabbit:
+    image: "rabbitmq:3-management"
+    hostname: "rabbit_1"
+    container_name: "rabbit_1"
+    ports:
+      - "15672:15672"
+      - "5672:5672"

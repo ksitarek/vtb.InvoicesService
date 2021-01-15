@@ -4,7 +4,7 @@ using vtb.InvoicesService.Domain;
 
 namespace vtb.InvoicesService.BusinessLogic.Events
 {
-    public interface IInvoiceDraftCreated
+    public interface ICreateInvoiceDraft
     {
         Guid InvoiceId { get; }
         DateTime DraftCreatedAtUtc { get; }
@@ -15,7 +15,16 @@ namespace vtb.InvoicesService.BusinessLogic.Events
         CalculationDirection CalculationDirection { get; }
     }
 
-    public interface IInvoiceIssued
+    public interface IIssueInvoice
+    {
+        Guid InvoiceId { get; }
+        InvoiceNumber InvoiceNumber { get; }
+        DateTime IssueDate { get; }
+        Guid IssuerId { get; }
+        DateTime PaymentDeadline { get; }
+    }
+
+    public interface IIssuePaidInvoice
     {
         Guid InvoiceId { get; }
         InvoiceNumber InvoiceNumber { get; }
@@ -23,35 +32,32 @@ namespace vtb.InvoicesService.BusinessLogic.Events
         Guid IssuerId { get; }
     }
 
-    public interface IPaidInvoiceIssued
-    {
-        Guid InvoiceId { get; }
-        InvoiceNumber InvoiceNumber { get; }
-        DateTime IssueDate { get; }
-        Guid IssuerId { get; }
-    }
-
-    public interface IInvoicePrinted
+    public interface IPrintInvoice
     {
         Guid InvoiceId { get; }
         DateTime PrintoutDate { get; }
     }
 
-    public interface IInvoicePaid
+    public interface IPayInvoice
     {
         Guid InvoiceId { get; }
         DateTime PaymentDate { get; }
     }
 
-    public interface IInvoicePositionsSet
+    public interface ISetInvoicePositions
     {
         Guid InvoiceId { get; }
         IEnumerable<InvoicePosition> InvoicePositions { get; }
     }
 
-    public interface IInvoiceTemplateSet
+    public interface ISetInvoiceTemplate
     {
         Guid InvoiceId { get; }
         Guid TemplateVersionId { get; }
+    }
+
+    public interface IInvoicePaymentDeadlineExpired
+    {
+        Guid InvoiceId { get; }
     }
 }

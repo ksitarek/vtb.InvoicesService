@@ -1,5 +1,8 @@
 ﻿using Automatonymous;
+using MassTransit;
+using System;
 using System.Linq;
+using System.Threading.Tasks;
 using vtb.InvoicesService.BusinessLogic.Events;
 using vtb.InvoicesService.Domain;
 
@@ -11,68 +14,80 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
         public State Issued { get; private set; }
         public State Printed { get; private set; }
         public State Paid { get; private set; }
+        public State Overdue { get; private set; }
+
+        public Event<ICreateInvoiceDraft> DraftCreated { get; private set; }
+        public Event<IIssueInvoice> InvoiceIssued { get; private set; }
+        public Event<IIssuePaidInvoice> PaidInvoiceIssued { get; private set; }
+        public Event<IPrintInvoice> InvoicePrinted { get; private set; }
+        public Event<IPayInvoice> InvoicePaid { get; private set; }
+        public Event<ISetInvoicePositions> InvoicePositionsSet { get; private set; }
+        public Event<ISetInvoiceTemplate> InvoiceTemplateSet { get; private set; }
+
+        public Schedule<Invoice, IInvoicePaymentDeadlineExpired> InvoicePaymentDeadline { get; private set; }
 
         public InvoiceStateMachine()
         {
             InstanceState(x => x.State);
-            ConfigureEvents();
+            Configure();
 
             Initially(When(DraftCreated).TransitionTo(Draft));
 
             During(Draft,
-                When(InvoiceIssued).Then(IssueInvoice).TransitionTo(Issued),
+                When(InvoiceIssued).Then(IssueInvoice).Schedule(InvoicePaymentDeadline, InitExpireEvent, CalculateDelay).TransitionTo(Issued),
                 When(PaidInvoiceIssued).Then(IssueInvoice).Then(PrintInvoice).Then(SetPaymentDate).TransitionTo(Paid),
                 When(InvoicePositionsSet).Then(SetInvoicePositions),
                 When(InvoiceTemplateSet).Then(SetInvoiceTemplate));
 
             During(Issued,
-                When(InvoicePrinted).Then(PrintInvoice).TransitionTo(Printed));
+                When(InvoicePrinted).Then(PrintInvoice).TransitionTo(Printed),
+                When(InvoicePaymentDeadline.Received).TransitionTo(Overdue));
 
-            During(Printed,
+            During(Printed, Overdue,
                 When(InvoicePaid).Then(SetPaymentDate).TransitionTo(Paid));
         }
 
-        private void SetInvoiceTemplate(BehaviorContext<Invoice, IInvoiceTemplateSet> context)
+        private Task<IInvoicePaymentDeadlineExpired> InitExpireEvent(ConsumeEventContext<Invoice, IIssueInvoice> c)
+            => c.Init<IInvoicePaymentDeadlineExpired>(new { c.Data.InvoiceId });
+
+        private DateTime CalculateDelay(ConsumeEventContext<Invoice, IIssueInvoice> context)
+            => context.Instance.PaymentDeadline.Value;
+
+        private void SetInvoiceTemplate(BehaviorContext<Invoice, ISetInvoiceTemplate> context)
             => context.Instance.SetTemplateVersion(context.Data.TemplateVersionId);
 
-        private void SetInvoicePositions(BehaviorContext<Invoice, IInvoicePositionsSet> context)
+        private void SetInvoicePositions(BehaviorContext<Invoice, ISetInvoicePositions> context)
             => context.Instance.SetPositions(context.Data.InvoicePositions.ToList());
 
-        private void SetPaymentDate(BehaviorContext<Invoice, IInvoicePaid> context)
+        private void SetPaymentDate(BehaviorContext<Invoice, IPayInvoice> context)
             => context.Instance.SetPaymentDate(context.Data.PaymentDate);
 
-        private void SetPaymentDate(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
+        private void SetPaymentDate(BehaviorContext<Invoice, IIssuePaidInvoice> context)
             => context.Instance.SetPaymentDate(context.Data.IssueDate);
 
-        private void PrintInvoice(BehaviorContext<Invoice, IInvoicePrinted> context)
+        private void PrintInvoice(BehaviorContext<Invoice, IPrintInvoice> context)
             => context.Instance.SetPrintoutDate(context.Data.PrintoutDate);
 
-        private void PrintInvoice(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
+        private void PrintInvoice(BehaviorContext<Invoice, IIssuePaidInvoice> context)
             => context.Instance.SetPrintoutDate(context.Data.IssueDate);
 
-        private void IssueInvoice(BehaviorContext<Invoice, IInvoiceIssued> context)
+        private void IssueInvoice(BehaviorContext<Invoice, IIssueInvoice> context)
             => context.Instance.Issue(
                 context.Data.InvoiceNumber,
                 context.Data.IssueDate,
-                context.Data.IssuerId
+                context.Data.IssuerId,
+                context.Data.PaymentDeadline
             );
 
-        private void IssueInvoice(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
+        private void IssueInvoice(BehaviorContext<Invoice, IIssuePaidInvoice> context)
             => context.Instance.Issue(
                     context.Data.InvoiceNumber,
                     context.Data.IssueDate,
-                    context.Data.IssuerId
+                    context.Data.IssuerId,
+                    context.Data.IssueDate
                 );
 
-        public Event<IInvoiceDraftCreated> DraftCreated { get; private set; }
-        public Event<IInvoiceIssued> InvoiceIssued { get; private set; }
-        public Event<IPaidInvoiceIssued> PaidInvoiceIssued { get; private set; }
-        public Event<IInvoicePrinted> InvoicePrinted { get; private set; }
-        public Event<IInvoicePaid> InvoicePaid { get; private set; }
-        public Event<IInvoicePositionsSet> InvoicePositionsSet { get; private set; }
-        public Event<IInvoiceTemplateSet> InvoiceTemplateSet { get; private set; }
-
-        private void ConfigureEvents()
+        private void Configure()
         {
             Event(() => DraftCreated, e =>
             {
@@ -94,6 +109,11 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
             Event(() => InvoicePaid, cc => cc.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId));
             Event(() => InvoicePositionsSet, cc => cc.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId));
             Event(() => InvoiceTemplateSet, cc => cc.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId));
+
+            Schedule(() => InvoicePaymentDeadline, i => i.InvoicePaymentDeadlineToken, s =>
+            {
+                s.Received = r => r.CorrelateById(i => i.Message.InvoiceId);
+            });
         }
     }
 }
