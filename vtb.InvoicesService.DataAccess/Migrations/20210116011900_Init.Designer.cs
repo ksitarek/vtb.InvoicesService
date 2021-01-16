@@ -10,7 +10,7 @@ using vtb.InvoicesService.DataAccess;
 namespace vtb.InvoicesService.DataAccess.Migrations
 {
     [DbContext(typeof(InvoicesContext))]
-    [Migration("20210116005901_Init")]
+    [Migration("20210116011900_Init")]
     partial class Init
     {
         protected override void BuildTargetModel(ModelBuilder modelBuilder)

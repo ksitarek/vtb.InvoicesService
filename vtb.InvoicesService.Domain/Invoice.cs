@@ -114,7 +114,7 @@ namespace vtb.InvoicesService.Domain
             TemplateVersionId = templateVersionId;
         }
 
-        public Guid CorrelationId { get; set; }
+        public Guid CorrelationId { get => InvoiceId; set => InvoiceId = value; }
 
         public decimal TotalNetValue => InvoicePositions
             .Select(x => x.GetTotalNetValue(CalculationDirection))

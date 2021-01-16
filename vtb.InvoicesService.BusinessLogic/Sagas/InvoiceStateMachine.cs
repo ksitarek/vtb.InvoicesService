@@ -93,15 +93,8 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
             {
                 e.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId);
                 e.InsertOnInitial = true;
-                e.SetSagaFactory(c => new Invoice(
-                    c.Message.DraftCreatedAtUtc,
-                    c.Message.TemplateVersionId,
-                    c.Message.BuyerId,
-                    c.Message.SellerId,
-                    c.Message.Currency,
-                    c.Message.CalculationDirection
-                ));
-                e.SelectId(x => Guid.NewGuid());
+                e.SetSagaFactory(InvoiceFactory);
+                e.SelectId(x => x.Message.InvoiceId);
             });
 
             Event(() => InvoiceIssued, cc => cc.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId));
@@ -115,6 +108,14 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
             {
                 s.Received = r => r.CorrelateById(i => i.Message.InvoiceId);
             });
+        }
+
+        private Invoice InvoiceFactory(ConsumeContext<IInvoiceDraftCreated> c)
+        {
+            var invoice = new Invoice(c.Message.DraftCreatedAtUtc, c.Message.TemplateVersionId, c.Message.BuyerId, c.Message.SellerId, c.Message.Currency, c.Message.CalculationDirection);
+            invoice.InvoiceId = c.Message.InvoiceId;
+
+            return invoice;
         }
     }
 }
