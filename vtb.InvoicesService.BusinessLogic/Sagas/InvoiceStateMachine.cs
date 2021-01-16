@@ -16,13 +16,13 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
         public State Paid { get; private set; }
         public State Overdue { get; private set; }
 
-        public Event<ICreateInvoiceDraft> DraftCreated { get; private set; }
-        public Event<IIssueInvoice> InvoiceIssued { get; private set; }
-        public Event<IIssuePaidInvoice> PaidInvoiceIssued { get; private set; }
-        public Event<IPrintInvoice> InvoicePrinted { get; private set; }
-        public Event<IPayInvoice> InvoicePaid { get; private set; }
-        public Event<ISetInvoicePositions> InvoicePositionsSet { get; private set; }
-        public Event<ISetInvoiceTemplate> InvoiceTemplateSet { get; private set; }
+        public Event<IInvoiceDraftCreated> DraftCreated { get; private set; }
+        public Event<IInvoiceIssued> InvoiceIssued { get; private set; }
+        public Event<IPaidInvoiceIssued> PaidInvoiceIssued { get; private set; }
+        public Event<IInvoicePrinted> InvoicePrinted { get; private set; }
+        public Event<IInvoicePaid> InvoicePaid { get; private set; }
+        public Event<IInvoicePositionsSet> InvoicePositionsSet { get; private set; }
+        public Event<IInvoiceTemplateSet> InvoiceTemplateSet { get; private set; }
 
         public Schedule<Invoice, IInvoicePaymentDeadlineExpired> InvoicePaymentDeadline { get; private set; }
 
@@ -34,7 +34,7 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
             Initially(When(DraftCreated).TransitionTo(Draft));
 
             During(Draft,
-                When(InvoiceIssued).Then(IssueInvoice).Schedule(InvoicePaymentDeadline, InitExpireEvent, CalculateDelay).TransitionTo(Issued),
+                When(InvoiceIssued).Then(IssueInvoice)/*.Schedule(InvoicePaymentDeadline, InitExpireEvent, CalculateDelay)*/.TransitionTo(Issued),
                 When(PaidInvoiceIssued).Then(IssueInvoice).Then(PrintInvoice).Then(SetPaymentDate).TransitionTo(Paid),
                 When(InvoicePositionsSet).Then(SetInvoicePositions),
                 When(InvoiceTemplateSet).Then(SetInvoiceTemplate));
@@ -44,34 +44,34 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
                 When(InvoicePaymentDeadline.Received).TransitionTo(Overdue));
 
             During(Printed, Overdue,
-                When(InvoicePaid).Then(SetPaymentDate).TransitionTo(Paid));
+                When(InvoicePaid).Then(SetPaymentDate).Unschedule(InvoicePaymentDeadline).TransitionTo(Paid));
         }
 
-        private Task<IInvoicePaymentDeadlineExpired> InitExpireEvent(ConsumeEventContext<Invoice, IIssueInvoice> c)
+        private Task<IInvoicePaymentDeadlineExpired> InitExpireEvent(ConsumeEventContext<Invoice, IInvoiceIssued> c)
             => c.Init<IInvoicePaymentDeadlineExpired>(new { c.Data.InvoiceId });
 
-        private DateTime CalculateDelay(ConsumeEventContext<Invoice, IIssueInvoice> context)
+        private DateTime CalculateDelay(ConsumeEventContext<Invoice, IInvoiceIssued> context)
             => context.Instance.PaymentDeadline.Value;
 
-        private void SetInvoiceTemplate(BehaviorContext<Invoice, ISetInvoiceTemplate> context)
+        private void SetInvoiceTemplate(BehaviorContext<Invoice, IInvoiceTemplateSet> context)
             => context.Instance.SetTemplateVersion(context.Data.TemplateVersionId);
 
-        private void SetInvoicePositions(BehaviorContext<Invoice, ISetInvoicePositions> context)
+        private void SetInvoicePositions(BehaviorContext<Invoice, IInvoicePositionsSet> context)
             => context.Instance.SetPositions(context.Data.InvoicePositions.ToList());
 
-        private void SetPaymentDate(BehaviorContext<Invoice, IPayInvoice> context)
+        private void SetPaymentDate(BehaviorContext<Invoice, IInvoicePaid> context)
             => context.Instance.SetPaymentDate(context.Data.PaymentDate);
 
-        private void SetPaymentDate(BehaviorContext<Invoice, IIssuePaidInvoice> context)
+        private void SetPaymentDate(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
             => context.Instance.SetPaymentDate(context.Data.IssueDate);
 
-        private void PrintInvoice(BehaviorContext<Invoice, IPrintInvoice> context)
+        private void PrintInvoice(BehaviorContext<Invoice, IInvoicePrinted> context)
             => context.Instance.SetPrintoutDate(context.Data.PrintoutDate);
 
-        private void PrintInvoice(BehaviorContext<Invoice, IIssuePaidInvoice> context)
+        private void PrintInvoice(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
             => context.Instance.SetPrintoutDate(context.Data.IssueDate);
 
-        private void IssueInvoice(BehaviorContext<Invoice, IIssueInvoice> context)
+        private void IssueInvoice(BehaviorContext<Invoice, IInvoiceIssued> context)
             => context.Instance.Issue(
                 context.Data.InvoiceNumber,
                 context.Data.IssueDate,
@@ -79,7 +79,7 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
                 context.Data.PaymentDeadline
             );
 
-        private void IssueInvoice(BehaviorContext<Invoice, IIssuePaidInvoice> context)
+        private void IssueInvoice(BehaviorContext<Invoice, IPaidInvoiceIssued> context)
             => context.Instance.Issue(
                     context.Data.InvoiceNumber,
                     context.Data.IssueDate,
@@ -101,6 +101,7 @@ namespace vtb.InvoicesService.BusinessLogic.Sagas
                     c.Message.Currency,
                     c.Message.CalculationDirection
                 ));
+                e.SelectId(x => Guid.NewGuid());
             });
 
             Event(() => InvoiceIssued, cc => cc.CorrelateById(s => s.InvoiceId, c => c.Message.InvoiceId));

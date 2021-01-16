@@ -9,6 +9,11 @@
     <ProjectReference Include="..\vtb.InvoicesService.Domain\vtb.InvoicesService.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="CommandHandlers\" />
+    <Folder Include="Commands\" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net5.0</TargetFramework>
   </PropertyGroup>

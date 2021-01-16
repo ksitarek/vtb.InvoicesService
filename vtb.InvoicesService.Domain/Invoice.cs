@@ -24,6 +24,7 @@ namespace vtb.InvoicesService.Domain
         public Currency Currency { get; set; }
         public CalculationDirection CalculationDirection { get; set; }
         public virtual List<InvoicePosition> InvoicePositions { get; set; } = new();
+        public byte[] RowVersion { get; set; }
 
         public Invoice(DateTime draftCreatedAtUtc, Guid templateVersionId, Guid buyerId, Guid sellerId,
             Currency currency, CalculationDirection calculationDirection)
@@ -113,11 +114,7 @@ namespace vtb.InvoicesService.Domain
             TemplateVersionId = templateVersionId;
         }
 
-        public Guid CorrelationId
-        {
-            get => InvoiceId;
-            set => InvoiceId = value;
-        }
+        public Guid CorrelationId { get; set; }
 
         public decimal TotalNetValue => InvoicePositions
             .Select(x => x.GetTotalNetValue(CalculationDirection))
@@ -129,13 +126,14 @@ namespace vtb.InvoicesService.Domain
             .DefaultIfEmpty(0m)
             .Sum();
 
-        public IEnumerable<TaxSummary> TaxSummaries => InvoicePositions
-            .GroupBy(x => x.TaxInfo)
-            .Select(x => new TaxSummary(
-                x.Key.TaxLabel,
-                x.Select(x => x.GetTotalNetValue(CalculationDirection)).DefaultIfEmpty(0).Sum(),
-                x.Select(x => x.GetTotalGrossValue(CalculationDirection)).DefaultIfEmpty(0).Sum()
-            ));
+        public virtual IEnumerable<TaxSummary> TaxSummaries =>
+            InvoicePositions
+                .GroupBy(x => x.TaxInfo)
+                .Select(x => new TaxSummary(
+                    x.Key.TaxLabel,
+                    x.Select(x => x.GetTotalNetValue(CalculationDirection)).DefaultIfEmpty(0).Sum(),
+                    x.Select(x => x.GetTotalGrossValue(CalculationDirection)).DefaultIfEmpty(0).Sum()
+                ));
 
         private void ValidateOrdinalNumbers(IEnumerable<int> positions)
         {

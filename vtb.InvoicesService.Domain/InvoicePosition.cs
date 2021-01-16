@@ -5,6 +5,7 @@ namespace vtb.InvoicesService.Domain
 {
     public class InvoicePosition
     {
+        public Guid InvoicePositionId { get; set; }
         public int OrdinalNumber { get; private set; }
         public string Summary { get; private set; }
         public string Description { get; private set; }
@@ -12,6 +13,10 @@ namespace vtb.InvoicesService.Domain
         public decimal Quantity { get; private set; }
         public decimal Value { get; private set; }
         public TaxInfo TaxInfo { get; private set; }
+
+        private InvoicePosition()
+        {
+        }
 
         public InvoicePosition(int ordinalNumber, string summary, decimal quantity, TaxInfo taxInfo, decimal value,
             string unitOfMeasure, string description = "")

@@ -1,11 +1,12 @@
 using MassTransit;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.OpenApi.Models;
-using vtb.InvoicesService.BusinessLogic.Consumers;
+using vtb.InvoicesService.DataAccess;
 
 namespace vtb.InvoicesService.Api
 {
@@ -20,10 +21,11 @@ namespace vtb.InvoicesService.Api
 
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddDbContext<InvoicesContext>(x => x.UseSqlServer(Configuration.GetConnectionString(nameof(InvoicesContext))));
+
             services.AddMassTransit(cfg =>
             {
                 cfg.SetKebabCaseEndpointNameFormatter();
-                cfg.AddConsumersFromNamespaceContaining<CreateInvoiceDraftConsumer>();
 
                 cfg.UsingRabbitMq((x, y) =>
                 {
@@ -41,7 +43,7 @@ namespace vtb.InvoicesService.Api
 
             services.AddSwaggerGen(c =>
             {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "tmp", Version = "v1" });
+                c.SwaggerDoc("v1", new OpenApiInfo { Title = "vtb.InvoicesService", Version = "v1" });
             });
 
             services.AddMvc();

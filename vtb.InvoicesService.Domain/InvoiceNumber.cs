@@ -4,17 +4,19 @@ namespace vtb.InvoicesService.Domain
 {
     public record InvoiceNumber
     {
-        public int OrderingNumber { get; }
+        public int OrderingNumber { get; init; }
 
-        public int Year { get; }
+        public int Year { get; init; }
 
-        public int Month { get; }
+        public int Month { get; init; }
 
-        public int Day { get; }
+        public int Day { get; init; }
 
-        public string FormattedNumber { get; }
+        public string FormattedNumber { get; init; }
 
         public DateTime IssuedAt { get => new DateTime(Year, Month, Day); }
+
+        private InvoiceNumber() { }
 
         public InvoiceNumber(int orderingNumber, int year, int month, int day, string formattedNumber)
         {

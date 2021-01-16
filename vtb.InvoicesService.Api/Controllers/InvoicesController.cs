@@ -1,8 +1,8 @@
 ﻿using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using vtb.InvoicesService.BusinessLogic;
 using vtb.InvoicesService.BusinessLogic.Events;
 using vtb.InvoicesService.Domain;
 
@@ -12,15 +12,16 @@ namespace vtb.InvoicesService.Api.Controllers
     [Route("[controller]")]
     public class InvoicesController : ControllerBase
     {
-        private readonly ISendEndpointProvider _sendEndpointProvider;
+        private readonly IPublishEndpoint _publishEndpoint;
 
-        public InvoicesController(ISendEndpointProvider sendEndpointProvider)
+        public InvoicesController(
+        IPublishEndpoint publishEndpoint)
         {
-            _sendEndpointProvider = sendEndpointProvider;
+            _publishEndpoint = publishEndpoint;
         }
 
-        [HttpPost]
-        public async Task<IActionResult> Post()
+        [HttpPost("create-draft")]
+        public async Task<IActionResult> CreateDraft()
         {
             var invoiceId = Guid.NewGuid();
             var draftCreatedAtUtc = DateTime.UtcNow;
@@ -30,8 +31,7 @@ namespace vtb.InvoicesService.Api.Controllers
             var currency = Currency.EUR;
             var calculationDirection = CalculationDirection.NetToGross;
 
-            var endpoint = await _sendEndpointProvider.GetSendEndpoint(Endpoints.CreateInvoiceDraft);
-            await endpoint.Send<ICreateInvoiceDraft>(new
+            await _publishEndpoint.Publish<IInvoiceDraftCreated>(new
             {
                 invoiceId,
                 draftCreatedAtUtc,
@@ -40,6 +40,43 @@ namespace vtb.InvoicesService.Api.Controllers
                 sellerId,
                 currency,
                 calculationDirection
+            });
+
+            return Accepted(invoiceId);
+        }
+
+        [HttpPost("add-pos")]
+        public async Task<IActionResult> AddPos(Guid invoiceId)
+        {
+            var invoicePositions = new List<InvoicePosition>()
+            {
+                new InvoicePosition(1, "lipsum", 1, new TaxInfo("23%", 0.23m), 1000, "pc")
+            };
+
+            await _publishEndpoint.Publish<IInvoicePositionsSet>(new
+            {
+                invoiceId,
+                invoicePositions
+            });
+
+            return Accepted();
+        }
+
+        [HttpPost("issue")]
+        public async Task<IActionResult> Issue(Guid invoiceId)
+        {
+            var invoiceNumber = new InvoiceNumber(1, 2021, 1, 16, "");
+            var issueDate = DateTime.UtcNow;
+            var issuerId = Guid.NewGuid();
+            var paymentDeadline = issueDate.AddDays(7);
+
+            await _publishEndpoint.Publish<IInvoiceIssued>(new
+            {
+                invoiceId,
+                invoiceNumber,
+                issueDate,
+                issuerId,
+                paymentDeadline
             });
 
             return Accepted();

@@ -5,9 +5,11 @@ namespace vtb.InvoicesService.Domain
 {
     public record TaxInfo
     {
-        public string TaxLabel { get; }
+        public string TaxLabel { get; init; }
 
-        public decimal TaxMultiplier { get; }
+        public decimal TaxMultiplier { get; init; }
+
+        private TaxInfo() { }
 
         public TaxInfo(string taxLabel, decimal taxMultiplier)
         {
